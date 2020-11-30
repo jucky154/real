@@ -1,0 +1,19 @@
+name: 'BuildDLL'
+on:
+  push:
+    branches:
+      - 'master'
+jobs:
+  BuildDLL:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v1
+      - run: go get github.com/nextzlog/zylo
+      - run: go build -buildmode=c-shared -o real.dll real.go
+      - uses: svenstaro/upload-release-action@v2
+        with:
+          tag: real
+          file: real.dll
+          overwrite: true
+          repo_token: ${{secrets.GITHUB_TOKEN}}
