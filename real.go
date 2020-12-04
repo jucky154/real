@@ -7,34 +7,34 @@ package main
 import "C"
 import "github.com/nextzlog/zylo"
 
-// export zlaunch
+//export zlaunch
 func zlaunch(warning zylo.Warning) {
 
 }
 
-// export zrevise
+//export zrevise
 func zrevise(qso *zylo.QSO) {
 
 }
 
-// export zverify
+//export zverify
 func zverify(qso *zylo.QSO) (score int) {
 	score = 0;
 	return;
 }
 
-// export zresult
+//export zresult
 func zresult(qso *zylo.Log) (total int) {
 	total = 0;
 	return;
 }
 
-// export zinsert
+//export zinsert
 func zinsert(qso *zylo.QSO) {
 
 }
 
-// export zdelete
+//export zdelete
 func zdelete(qso *zylo.QSO) {
 
 }
