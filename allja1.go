@@ -10,12 +10,8 @@ import "log"
 import "os"
 import "unsafe"
 
-func pointer_to_qso(ptr uintptr) *zylo.QSO {
-	return (*zylo.QSO)(unsafe.Pointer(ptr))
-}
-
 //export zlaunch
-func zlaunch(uintptr) {
+func zlaunch(string) {
 	file, err := os.Create("output.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -28,7 +24,8 @@ func zlaunch(uintptr) {
 
 //export zrevise
 func zrevise(ptr uintptr) {
-
+	qso := ToQSO(ptr)
+	qso.SetMul1(qso.GetRcvd())
 }
 
 //export zverify
@@ -50,7 +47,7 @@ func zinsert(ptr uintptr) {
 		log.Fatal(err)
 	}
 	file.WriteString("Hello")
-	qso := pointer_to_qso(ptr)
+	qso := ToQSO(ptr)
 	file.WriteString(qso.GetCall())
 	if err := file.Close(); err != nil {
 		log.Fatal(err)
