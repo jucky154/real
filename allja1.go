@@ -8,7 +8,6 @@ import "C"
 import "github.com/nextzlog/zylo"
 import "log"
 import "os"
-import "unsafe"
 
 //export zlaunch
 func zlaunch(string) {
