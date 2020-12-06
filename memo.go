@@ -74,14 +74,12 @@ func zresult(qso uintptr) (total int) {
 func zinsert(ptr uintptr) {
 	insert := []byte{0}
 	qso:=zylo.ToQSO(ptr)
-	qso.SetCall("JA1ZLO")
 	log:=new(zylo.Log)
 	*log=append(*log,*qso) 
 	insert=append(insert,log.Dump(time.Local)...)
 
 	ws, _ := websocket.Dial(url,"",origin)
 	websocket.Message.Send(ws,insert)
-	time.Sleep(2*time.Second)
 	_=ws.Close()
 	
 }
