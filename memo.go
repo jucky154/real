@@ -13,8 +13,8 @@ import "golang.org/x/net/websocket"
 import "time"
 
 var(
-	url="wss://realtime.allja1.org/agent/JA1ZLO/a6ceda1d-517a-404b-92d5-2b7bfb9bc73b"
-	origin="https://realtime.allja1.org/agent/JA1ZLO/"
+	url="wss://"
+	origin="https://"
 )
 
 func pointer_to_qso(ptr uintptr) *zylo.QSO {
