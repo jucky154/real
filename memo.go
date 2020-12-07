@@ -17,16 +17,18 @@ var(
 	origin="https://"
 )
 
+var ws *websocket.Conn
+var wserr interface{}
+
 func pointer_to_qso(ptr uintptr) *zylo.QSO {
 	return (*zylo.QSO)(unsafe.Pointer(ptr))
 }
 
 //export zlaunch
 func zlaunch(uintptr) {
-	ws, err := websocket.Dial(url,"",origin)
-	_=ws.Close()
+	ws, wserr = websocket.Dial(url,"",origin)
 	
-	if err != nil{	
+	if wserr != nil{	
 		file, err := os.Create("output.txt")
 		if err != nil {
 			log.Fatal(err)
@@ -38,7 +40,7 @@ func zlaunch(uintptr) {
 			log.Fatal(err)
 		}
 	}
-	if err == nil{	
+	if wserr == nil{	
 		file, err := os.Create("output.txt")
 		if err != nil {
 			log.Fatal(err)
@@ -60,7 +62,7 @@ func zrevise(ptr uintptr) {
 
 //export zverify
 func zverify(ptr uintptr) (score int) {
-	score = 0;
+	score = 1;
 	return;
 }
 
@@ -78,14 +80,19 @@ func zinsert(ptr uintptr) {
 	*log=append(*log,*qso) 
 	insert=append(insert,log.Dump(time.Local)...)
 
-	ws, _ := websocket.Dial(url,"",origin)
 	websocket.Message.Send(ws,insert)
-	_=ws.Close()
 	
 }
 
 //export zdelete
 func zdelete(ptr uintptr) {
+	insert := []byte{1}
+	qso:=zylo.ToQSO(ptr)
+	log:=new(zylo.Log)
+	*log=append(*log,*qso) 
+	insert=append(insert,log.Dump(time.Local)...)
+
+	websocket.Message.Send(ws,insert)
 
 }
 
