@@ -4,13 +4,13 @@
  */
 package main
 
-import "C"
-import "github.com/nextzlog/zylo"
-import "log"
-import "os"
-import "unsafe"
-import "golang.org/x/net/websocket"
-import "time"
+import (
+ "C"
+ "github.com/nextzlog/zylo"
+ "golang.org/x/net/websocket"
+ "time"
+ "github.com/sqweek/dialog"
+)
 
 var(
 	url="wss://"
@@ -20,37 +20,19 @@ var(
 var ws *websocket.Conn
 var wserr interface{}
 
-func pointer_to_qso(ptr uintptr) *zylo.QSO {
-	return (*zylo.QSO)(unsafe.Pointer(ptr))
-}
+
+
 
 //export zlaunch
 func zlaunch(uintptr) {
 	ws, wserr = websocket.Dial(url,"",origin)
 	
 	if wserr != nil{	
-		file, err := os.Create("output.txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		file.WriteString("No")
-
-		if err := file.Close(); err != nil {
-			log.Fatal(err)
-		}
+		dialog.Message("%s","Not connected websocket. Plese check websocket.").Info()
+		
 	}
 	if wserr == nil{	
-		file, err := os.Create("output.txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		file.WriteString("Yes")
-
-		if err := file.Close(); err != nil {
-			log.Fatal(err)
-		}
+		dialog.Message("%s","You are connecting websocket.").Info()
 	}
 }
 
