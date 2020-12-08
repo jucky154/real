@@ -5,44 +5,109 @@
 package main
 
 import (
-	"C"
-	"os"
-	"time"
-	"github.com/nextzlog/zylo"
+ "C"
+ "github.com/nextzlog/zylo"
+ "golang.org/x/net/websocket"
+ "time"
+ "github.com/sqweek/dialog"
+ "os"
 )
 
+var(
+	url="wss://realtime.allja1.org/agent/JA1ZLO/a6ceda1d-517a-404b-92d5-2b7bfb9bc73b"
+	origin="https://realtime.allja1.org/agent/JA1ZLO/"
+)
+
+var ws *websocket.Conn
+var wserr interface{}
+
+
+
+
 //export zlaunch
-func zlaunch(cfg string) {
+func zlaunch(uintptr) {
+	ws, wserr = websocket.Dial(url,"",origin)
+	
+	if wserr != nil{	
+		dialog.Message("%s","Not connected websocket. Plese check websocket.").Info()
+		
+	}
+	if wserr == nil{	
+		dialog.Message("%s","You are connecting websocket.").Info()
+	}
+	go recvMsg()
 }
 
 //export zrevise
 func zrevise(ptr uintptr) {
 	qso := zylo.ToQSO(ptr)
 	qso.SetMul1(qso.GetRcvd())
-	qso.SetMul2("")
 }
 
 //export zverify
 func zverify(ptr uintptr) (score int) {
-	return 114514
+	score = 1;
+	return;
 }
 
 //export zresult
-func zresult(log uintptr) (total int) {
-	return 364364
+func zresult(qso uintptr) (total int) {
+	total = 0;
+	return;
 }
 
 //export zinsert
 func zinsert(ptr uintptr) {
-	qso := zylo.ToQSO(ptr)
-	log := new(zylo.Log)
-	*log = append(*log, *qso)
-	file, _ := os.Create("insert.zlo")
-	defer file.Close()
-	file.Write(log.Dump(time.Local))
+	insert := []byte{0}
+	sendQso(insert,ptr)
 }
 
 //export zdelete
-func zdelete(ptr uintptr) {}
+func zdelete(ptr uintptr) {
+	insert := []byte{1}
+	sendQso(insert,ptr)
+}
+
+//export zfinish
+func zfinish(){
+	_=ws.Close()
+	
+}
+
+//export sendQso
+func sendQso(insert []byte,ptr uintptr){
+	qso:=zylo.ToQSO(ptr)
+	log:=new(zylo.Log)
+	*log=append(*log,*qso) 
+	insert=append(insert,log.Dump(time.Local)...)	
+	
+	err := websocket.Message.Send(ws,insert)
+
+	time.Sleep(time.Second*2)
+
+	if err != nil{	
+		file,_ := os.Create("err.ZLO")
+		defer file.Close()
+		file.Write(log.Dump(time.Local))
+
+		dialog.Message("%s","Not connected websocket. Plese check websocket.make zlo file to send again.").Info()
+	}
+}
+
+//export recvMsg
+func recvMsg(){
+	for{
+		Msg:="hoge"
+		err := websocket.Message.Receive(ws,Msg)
+		time.Sleep(time.Second*1)
+		if Msg != "hoge"{
+			dialog.Message("%s",Msg).Info()
+		}
+
+		if err != nil{
+			dialog.Message("%s","Not connected websocket. Plese check websocket.Restart zLog ").Info()
+		}
+	}
+}
 
 func main() {}
