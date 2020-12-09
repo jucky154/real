@@ -5,37 +5,21 @@
 package main
 
 import (
- "C"
- "github.com/nextzlog/zylo"
- "golang.org/x/net/websocket"
- "time"
- "github.com/sqweek/dialog"
- "os"
+	"C"
+	"fmt"
+	"log"
+	"github.com/asticode/go-astikit"
+	"github.com/asticode/go-astilectron"
+	"github.com/nextzlog/zylo"
+	
 )
-
-var(
-	url="wss://realtime.allja1.org/agent/JA1ZLO/a6ceda1d-517a-404b-92d5-2b7bfb9bc73b"
-	origin="https://realtime.allja1.org/agent/JA1ZLO/"
-)
-
-var ws *websocket.Conn
-var wserr interface{}
-
 
 
 
 //export zlaunch
-func zlaunch(uintptr) {
-	ws, wserr = websocket.Dial(url,"",origin)
+func zlaunch(cfg string) {
+	go window()
 	
-	if wserr != nil{	
-		dialog.Message("%s","Not connected websocket. Plese check websocket.").Info()
-		
-	}
-	if wserr == nil{	
-		dialog.Message("%s","You are connecting websocket.").Info()
-	}
-	go recvMsg()
 }
 
 //export zrevise
@@ -51,63 +35,64 @@ func zverify(ptr uintptr) (score int) {
 }
 
 //export zresult
-func zresult(qso uintptr) (total int) {
+func zresult(log uintptr) (total int) {
 	total = 0;
 	return;
 }
 
+
 //export zinsert
 func zinsert(ptr uintptr) {
-	insert := []byte{0}
-	sendQso(insert,ptr)
 }
 
 //export zdelete
 func zdelete(ptr uintptr) {
-	insert := []byte{1}
-	sendQso(insert,ptr)
 }
 
 //export zfinish
-func zfinish(){
-	_=ws.Close()
-	
+func zfinish() {
 }
 
-//export sendQso
-func sendQso(insert []byte,ptr uintptr){
-	qso:=zylo.ToQSO(ptr)
-	log:=new(zylo.Log)
-	*log=append(*log,*qso) 
-	insert=append(insert,log.Dump(time.Local)...)	
-	
-	err := websocket.Message.Send(ws,insert)
+func window(){
+// Set logger
+	l := log.New(log.Writer(), log.Prefix(), log.Flags())
 
-	time.Sleep(time.Second*2)
-
-	if err != nil{	
-		file,_ := os.Create("err.ZLO")
-		defer file.Close()
-		file.Write(log.Dump(time.Local))
-
-		dialog.Message("%s","Not connected websocket. Plese check websocket.make zlo file to send again.").Info()
+	// Create astilectron
+	a, err := astilectron.New(l, astilectron.Options{
+		AppName:           "Test",
+		BaseDirectoryPath: "example",
+	})
+	if err != nil {
+		l.Fatal(fmt.Errorf("main: creating astilectron failed: %w", err))
 	}
-}
+	defer a.Close()
 
-//export recvMsg
-func recvMsg(){
-	for{
-		Msg:="hoge"
-		err := websocket.Message.Receive(ws,Msg)
-		time.Sleep(time.Second*1)
-		if Msg != "hoge"{
-			dialog.Message("%s",Msg).Info()
-		}
+	// Handle signals
+	a.HandleSignals()
 
-		if err != nil{
-			dialog.Message("%s","Not connected websocket. Plese check websocket.Restart zLog ").Info()
-		}
+	// Start
+	if err = a.Start(); err != nil {
+		l.Fatal(fmt.Errorf("main: starting astilectron failed: %w", err))
 	}
+
+	// New window
+	var w *astilectron.Window
+	if w, err = a.NewWindow("https://realtime.allja1.org/lists", &astilectron.WindowOptions{
+		Center: astikit.BoolPtr(true),
+		Height: astikit.IntPtr(700),
+		Width:  astikit.IntPtr(700),
+	}); err != nil {
+		l.Fatal(fmt.Errorf("main: new window failed: %w", err))
+	}
+
+	// Create windows
+	if err = w.Create(); err != nil {
+		l.Fatal(fmt.Errorf("main: creating window failed: %w", err))
+	}
+
+	// Blocking pattern
+	a.Wait()
 }
+
 
 func main() {}
