@@ -24,11 +24,10 @@ var (
 	}
 	url string
 	mainWindow *winc.Form
-	ls[99] *winc.ListView
-	ls_rank *winc.ListView
+	ls *winc.ListView
+	dock *winc.SimpleDock
+	dock2 *winc.SimpleDock
 	panel[99] *winc.Panel
-	keys[99] string
-	tabs *winc.TabView
 	first int
 	btnfirst int
 	sections map[string] ([]Station)
@@ -90,9 +89,11 @@ func zlaunch(cfg string) {
 			notify(err.Error())
 			notify(fmt.Sprintf("register again"))
 		} else {
+			subWindow.Close()
 			notify(fmt.Sprintf("successfully connected to %s", url))
 			first=1
-			subWindow.Close()
+			makemainWindow()
+			go onmessage()
 		}
 		
 	})
@@ -130,15 +131,6 @@ func zinsert(ptr uintptr) {
 	qso := zylo.ToQSO(ptr)
 	sendQSO(INSERT, qso)
 	notify(fmt.Sprintf("append QSO with %s", qso.GetCall()))
-	if first==1{
-		_,data,err := ws.ReadMessage()
-		if err == nil {	
-			json.Unmarshal(data, &sections)
-			makemainWindow()
-			go onmessage()
-			first=0
-		}
-	}
 }
 
 //export zdelete
@@ -176,15 +168,14 @@ func onmessage() {
 func makemainWindow(){
 	// --- Make Window
 	mainWindow = winc.NewForm(nil)
-
 	mainWindow.SetSize(700, 600)
 	mainWindow.SetText("Ranking")
-	dock := winc.NewSimpleDock(mainWindow)
-	tabs = winc.NewTabView(mainWindow)
+		dock = winc.NewSimpleDock(mainWindow)
+	tabs := winc.NewTabView(mainWindow)
 	//check rank
 	
 	
-	panel[0] = tabs.AddPanel("your rank")
+	panel[0] = tabs.AddPanel("rival's rank")
 	ls_rank := winc.NewListView(panel[0])
 	ls_rank.EnableEditLabels(false)
 	ls_rank.AddColumn("section", 120)
@@ -193,66 +184,57 @@ func makemainWindow(){
 	ls_rank.AddColumn("point", 120)
 	ls_rank.AddColumn("score", 120)
 
-	dock1 := winc.NewSimpleDock(panel[0])
-	dock1.Dock(ls_rank, winc.Fill)
+	dock0 := winc.NewSimpleDock(panel[0])
+	dock0.Dock(ls_rank, winc.Fill)
 
-	panel[1] = tabs.AddPanel("what is your callsign?")
+	panel[1] = tabs.AddPanel("rival's callsign")
 	edt := winc.NewEdit(panel[1])
 	edt.SetPos(10, 20)
-	edt.SetText("callsign")
+	edt.SetText("what is rival's callsign?")
 
 	btn := winc.NewPushButton(panel[1])
 	btn.SetText("check!")
 	btn.SetPos(40, 50)
 	btn.SetSize(100, 40)
-	btnfirst=1
 	btn.OnClick().Bind(func(e *winc.Event) {
-		callsign:=edt.ControlBase.Text()
-		for section_name,section := range sections {
-			sort.Sort(ByTOTAL(section))
-			j:=1
-			for _, station := range section {
+		if sections == nil{
+			notify(fmt.Sprintf("none ranking data"))
+		} else {
+			check:=0
+			callsign:=edt.ControlBase.Text()
+			for section_name,section := range sections {
+				sort.Sort(ByTOTAL(section))
+				j:=1
+				for _, station := range section {
 					if station.CALL==callsign{
-					p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
-					ls_rank.AddItem(p)
-				}
+						p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
+						ls_rank.AddItem(p)
+						check=1
+					}
 				j=j+1
+				}
 			}
-		}	
-		btnfirst=0		
+			if check==0{
+				notify(fmt.Sprintf("your rival doesn't register this contest"))
+			}
+		}			
 	})	
+	
+	panel[2] = tabs.AddPanel("ranking")
+	ls = winc.NewListView(panel[2])
+	ls.EnableEditLabels(false)
+	ls.AddColumn("section", 120)
+	ls.AddColumn("rank", 120)
+	ls.AddColumn("call sign", 120)
+	ls.AddColumn("point", 120)
+	ls.AddColumn("score", 120)
+	ls.SetPos(10, 180)
 
-	i:=2
-	for section_name,section := range sections {	
-		// --- Tabs
-		panel[i] = tabs.AddPanel(section_name)
-		keys[i]=section_name
+	dock2 = winc.NewSimpleDock(panel[2])
+	dock2.Dock(ls, winc.Fill)
 
-		ls[i] = winc.NewListView(panel[i])
-		ls[i].EnableEditLabels(false)
-		ls[i].AddColumn("rank", 120)
-		ls[i].AddColumn("call sign", 120)
-		ls[i].AddColumn("point", 120)
-		ls[i].AddColumn("score", 120)
-		ls[i].SetPos(10, 180)
-			
-		j:=1
-		sort.Sort(ByTOTAL(section))
-		for _, station := range section {
-			p := &Item{[]string{strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
-			ls[i].AddItem(p)
-			j=j+1
-		}
 
-		// --- Dock(list and tab)
-		dock1 := winc.NewSimpleDock(panel[i])
-		dock1.Dock(ls[i], winc.Fill)
-		i=i+1
-	}
-
-	tabs.SetCurrent(0)
-
-	// --- Dock(window and tabs)
+	// --- Dock(list)
 	dock.Dock(tabs, winc.Top)           
 	dock.Dock(tabs.Panels(), winc.Fill)
 	mainWindow.Center()
@@ -260,35 +242,23 @@ func makemainWindow(){
 }
  
 func reload(sections map[string] ([]Station)){
+	//delete ranking
+	if first != 1{
+		ls.DeleteAllItems()
+	}
 	for section_name,section := range sections {
-		//get index number 
-		i:=2
-		for _,_= range sections {
-			if section_name == keys[i]{
-				break
-			}
-			i=i+1
-		}
-
 		//reload
-		//delete ranking
-		ls[i].DeleteAllItems()
-					
 		j:=1
 		sort.Sort(ByTOTAL(section))
 		for _, station := range section {
-			p := &Item{[]string{strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
-			ls[i].AddItem(p)
+			p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
+			ls.AddItem(p)
 			j=j+1
 		}
-
 		// --- Dock(list and tab)
-		dock1 := winc.NewSimpleDock(panel[i])
-		dock1.Dock(ls[i], winc.Fill)
+		dock2.Dock(ls, winc.Fill)
+		first=0
 	}
 }
-
-
-
 
 func main() {}
