@@ -26,10 +26,10 @@ var (
 	mainWindow *winc.Form
 	ls *winc.ListView
 	dock *winc.SimpleDock
-	dock2 *winc.SimpleDock
+	dock1 *winc.SimpleDock
 	panel[99] *winc.Panel
 	first int
-	btnfirst int
+	check int
 	sections map[string] ([]Station)
 )
 
@@ -92,6 +92,7 @@ func zlaunch(cfg string) {
 			subWindow.Close()
 			notify(fmt.Sprintf("successfully connected to %s", url))
 			first=1
+			check=0
 			makemainWindow()
 			go onmessage()
 		}
@@ -170,12 +171,19 @@ func makemainWindow(){
 	mainWindow = winc.NewForm(nil)
 	mainWindow.SetSize(700, 600)
 	mainWindow.SetText("Ranking")
-		dock = winc.NewSimpleDock(mainWindow)
+	dock = winc.NewSimpleDock(mainWindow)
 	tabs := winc.NewTabView(mainWindow)
 	//check rank
 	
-	
-	panel[0] = tabs.AddPanel("rival's rank")
+	panel[0] = tabs.AddPanel("check rivals")
+	edt := winc.NewEdit(panel[0])
+	edt.SetPos(10, 20)
+	edt.SetText("what is rival's callsign?")
+
+	btn := winc.NewPushButton(panel[0])
+	btn.SetText("check!")
+	btn.SetPos(40, 50)
+	btn.SetSize(100, 40)
 	ls_rank := winc.NewListView(panel[0])
 	ls_rank.EnableEditLabels(false)
 	ls_rank.AddColumn("section", 120)
@@ -184,23 +192,16 @@ func makemainWindow(){
 	ls_rank.AddColumn("point", 120)
 	ls_rank.AddColumn("score", 120)
 
-	dock0 := winc.NewSimpleDock(panel[0])
-	dock0.Dock(ls_rank, winc.Fill)
 
-	panel[1] = tabs.AddPanel("rival's callsign")
-	edt := winc.NewEdit(panel[1])
-	edt.SetPos(10, 20)
-	edt.SetText("what is rival's callsign?")
-
-	btn := winc.NewPushButton(panel[1])
-	btn.SetText("check!")
-	btn.SetPos(40, 50)
-	btn.SetSize(100, 40)
 	btn.OnClick().Bind(func(e *winc.Event) {
 		if sections == nil{
 			notify(fmt.Sprintf("none ranking data"))
 		} else {
-			check:=0
+			if check!=0{
+				ls_rank.DeleteAllItems()
+			}
+				
+			check=0
 			callsign:=edt.ControlBase.Text()
 			for section_name,section := range sections {
 				sort.Sort(ByTOTAL(section))
@@ -219,9 +220,14 @@ func makemainWindow(){
 			}
 		}			
 	})	
+	dock0 := winc.NewSimpleDock(panel[0])
+	dock0.Dock(btn, winc.Top)
+	dock0.Dock(edt, winc.Top)
+	dock0.Dock(ls_rank, winc.Top)
+
 	
-	panel[2] = tabs.AddPanel("ranking")
-	ls = winc.NewListView(panel[2])
+	panel[1] = tabs.AddPanel("ranking")
+	ls = winc.NewListView(panel[1])
 	ls.EnableEditLabels(false)
 	ls.AddColumn("section", 120)
 	ls.AddColumn("rank", 120)
@@ -230,8 +236,8 @@ func makemainWindow(){
 	ls.AddColumn("score", 120)
 	ls.SetPos(10, 180)
 
-	dock2 = winc.NewSimpleDock(panel[2])
-	dock2.Dock(ls, winc.Fill)
+	dock1 = winc.NewSimpleDock(panel[1])
+	dock1.Dock(ls, winc.Fill)
 
 
 	// --- Dock(list)
@@ -256,7 +262,7 @@ func reload(sections map[string] ([]Station)){
 			j=j+1
 		}
 		// --- Dock(list and tab)
-		dock2.Dock(ls, winc.Fill)
+		dock1.Dock(ls, winc.Fill)
 		first=0
 	}
 }
