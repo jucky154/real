@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"sort"
+	"strings"
 )
 
 var (
@@ -24,13 +25,17 @@ var (
 	}
 	url string
 	mainWindow *winc.Form
+	subWindow *winc.Form
 	ls *winc.ListView
 	dock *winc.SimpleDock
 	dock1 *winc.SimpleDock
 	panel[99] *winc.Panel
 	first int
+	sub int
 	check int
 	sections map[string] ([]Station)
+	stopCh chan struct{}
+    	doneCh chan struct{}
 )
 
 
@@ -42,7 +47,7 @@ type Station struct {
 
 type ByTOTAL []Station
 func (a ByTOTAL) Len() int          {return len(a)}
-func (a ByTOTAL) Less(i,j int) bool {return a[i].TOTAL<a[j].TOTAL}
+func (a ByTOTAL) Less(i,j int) bool {return a[i].TOTAL>a[j].TOTAL}
 func (a ByTOTAL) Swap(i,j int)      {a[i],a[j]=a[i],a[i]}
 
 func notify(msg string) {
@@ -70,7 +75,8 @@ func (item Item) ImageIndex() int          { return 0 }
 
 //export zlaunch
 func zlaunch(cfg string) {
-	subWindow := winc.NewForm(nil)
+	sub=1
+	subWindow = winc.NewForm(nil)
 	subWindow.SetSize(400, 300)
 	subWindow.SetText("Registration")
 	edt := winc.NewEdit(subWindow)
@@ -87,12 +93,14 @@ func zlaunch(cfg string) {
 		err := ws.GetDialError()
 		if err != nil {
 			notify(err.Error())
-			notify(fmt.Sprintf("register again"))
 		} else {
 			subWindow.Close()
+			sub=0
 			notify(fmt.Sprintf("successfully connected to %s", url))
 			first=1
 			check=0
+    			stopCh = make(chan struct{})
+   			doneCh = make(chan struct{})
 			makemainWindow()
 			go onmessage()
 		}
@@ -143,8 +151,14 @@ func zdelete(ptr uintptr) {
 
 //export zfinish
 func zfinish() {
-	ws.Close()
-	mainWindow.Close()
+	if sub==1{
+		subWindow.Close()
+	}else{	
+		close(stopCh)
+		<-doneCh
+		ws.Close()
+		mainWindow.Close()
+	}
 }
 
 func sendQSO(request byte, qso *zylo.QSO) {
@@ -157,12 +171,19 @@ func sendQSO(request byte, qso *zylo.QSO) {
 }
 
 func onmessage() {
+	defer func() { close(doneCh) }()
+
 	for{
 		_,data,err := ws.ReadMessage()
 		if err == nil {	
 			json.Unmarshal(data, &sections)
 			reload(sections)
 		}
+        	select {
+        	case <- stopCh:
+            		return
+		default:
+        	}
 	}
 }
 
@@ -205,14 +226,22 @@ func makemainWindow(){
 			callsign:=edt.ControlBase.Text()
 			for section_name,section := range sections {
 				sort.Sort(ByTOTAL(section))
-				j:=1
+				j:=0
+				before_score:=-1
+				wait_rank:=0
 				for _, station := range section {
-					if station.CALL==callsign{
+					if before_score == station.SCORE {
+						wait_rank=wait_rank+1
+					}else{
+						j=j+1+wait_rank
+						wait_rank=0
+						before_score = station.SCORE
+					}
+					if strings.Index(station.CALL,callsign)>=0{
 						p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
 						ls_rank.AddItem(p)
 						check=1
 					}
-				j=j+1
 				}
 			}
 			if check==0{
@@ -254,12 +283,20 @@ func reload(sections map[string] ([]Station)){
 	}
 	for section_name,section := range sections {
 		//reload
-		j:=1
 		sort.Sort(ByTOTAL(section))
+		j:=0
+		before_score:=-1
+		wait_rank:=0
 		for _, station := range section {
+			if before_score == station.SCORE {
+				wait_rank=wait_rank+1
+			}else{
+				j=j+1+wait_rank
+				wait_rank=0
+				before_score = station.SCORE
+			}
 			p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
 			ls.AddItem(p)
-			j=j+1
 		}
 		// --- Dock(list and tab)
 		dock1.Dock(ls, winc.Fill)
