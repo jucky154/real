@@ -48,7 +48,7 @@ type Station struct {
 type ByTOTAL []Station
 func (a ByTOTAL) Len() int          {return len(a)}
 func (a ByTOTAL) Less(i,j int) bool {return a[i].TOTAL>a[j].TOTAL}
-func (a ByTOTAL) Swap(i,j int)      {a[i],a[j]=a[i],a[i]}
+func (a ByTOTAL) Swap(i,j int)      {a[i],a[j]=a[j],a[i]}
 
 func notify(msg string) {
 	toast := toast.Notification {
