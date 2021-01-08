@@ -1,6 +1,6 @@
 /*
  implements the real time contest client software.
- Copyright (C) 2020 JA1ZLO.
+ Copyright (C) 2020-2021 JA1ZLO.
 */
 package main
 
