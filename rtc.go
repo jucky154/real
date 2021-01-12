@@ -1,6 +1,6 @@
 /*
  implements the real time contest client software.
- Copyright (C) 2020-2021 JA1ZLO.
+ Copyright (C) 2020 JA1ZLO.
 */
 package main
 
@@ -30,9 +30,11 @@ var (
 	dock *winc.SimpleDock
 	dock1 *winc.SimpleDock
 	panel[99] *winc.Panel
+	keys[99] string
 	first int
 	sub int
 	check int
+	cb *winc.ComboBox
 	sections map[string] ([]Station)
 	stopCh chan struct{}
     	doneCh chan struct{}
@@ -101,6 +103,7 @@ func zlaunch(cfg string) {
 			check=0
     			stopCh = make(chan struct{})
    			doneCh = make(chan struct{})
+			keys[0]=""
 			makemainWindow()
 			go onmessage()
 		}
@@ -256,6 +259,16 @@ func makemainWindow(){
 
 	
 	panel[1] = tabs.AddPanel("ranking")
+	cb=winc.NewComboBox(panel[1])
+	cb.InsertItem(0,"ALL")
+	cb.SetSelectedItem(0)
+	cb.OnSelectedChange().Bind(func(e *winc.Event) {
+		if sections == nil{
+			notify(fmt.Sprintf("none ranking data"))
+		} else {
+			reload(sections)
+		}			
+	})	
 	ls = winc.NewListView(panel[1])
 	ls.EnableEditLabels(false)
 	ls.AddColumn("section", 120)
@@ -266,6 +279,7 @@ func makemainWindow(){
 	ls.SetPos(10, 180)
 
 	dock1 = winc.NewSimpleDock(panel[1])
+	dock1.Dock(cb, winc.Top)
 	dock1.Dock(ls, winc.Fill)
 
 
@@ -277,10 +291,25 @@ func makemainWindow(){
 }
  
 func reload(sections map[string] ([]Station)){
+	//define section combobox 
+	if first == 1{
+		m := 1
+		for section_name,_ := range sections {
+			cb.InsertItem(m,section_name)
+			keys[m]=section_name
+			m=m+1
+		}
+	}
+		
 	//delete ranking
+
 	if first != 1{
 		ls.DeleteAllItems()
 	}
+	//selected item
+	select_section:=keys[cb.SelectedItem()]
+
+
 	for section_name,section := range sections {
 		//reload
 		sort.Sort(ByTOTAL(section))
@@ -295,8 +324,10 @@ func reload(sections map[string] ([]Station)){
 				wait_rank=0
 				before_score = station.SCORE
 			}
-			p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
-			ls.AddItem(p)
+			if strings.Index(section_name,select_section)>=0{
+				p := &Item{[]string{section_name,strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
+				ls.AddItem(p)
+			}
 		}
 		// --- Dock(list and tab)
 		dock1.Dock(ls, winc.Fill)
