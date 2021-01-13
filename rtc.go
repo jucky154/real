@@ -30,11 +30,11 @@ var (
 	dock *winc.SimpleDock
 	dock1 *winc.SimpleDock
 	panel[99] *winc.Panel
-	keys[99] string
+	ls_section *winc.ListView
 	first int
 	sub int
 	check int
-	cb *winc.ComboBox
+	select_section string
 	sections map[string] ([]Station)
 	stopCh chan struct{}
     	doneCh chan struct{}
@@ -66,6 +66,9 @@ type Item struct {
 	checked bool
 }
 
+type Atem struct {
+	T       []string
+}
 
 func (item Item) Text() []string    { return item.T }
 func (item *Item) SetText(s string) { item.T[0] = s }
@@ -101,9 +104,9 @@ func zlaunch(cfg string) {
 			notify(fmt.Sprintf("successfully connected to %s", url))
 			first=1
 			check=0
+			select_section=""
     			stopCh = make(chan struct{})
    			doneCh = make(chan struct{})
-			keys[0]=""
 			makemainWindow()
 			go onmessage()
 		}
@@ -193,7 +196,7 @@ func onmessage() {
 func makemainWindow(){
 	// --- Make Window
 	mainWindow = winc.NewForm(nil)
-	mainWindow.SetSize(700, 600)
+	mainWindow.SetSize(800, 600)
 	mainWindow.SetText("Ranking")
 	dock = winc.NewSimpleDock(mainWindow)
 	tabs := winc.NewTabView(mainWindow)
@@ -259,16 +262,26 @@ func makemainWindow(){
 
 	
 	panel[1] = tabs.AddPanel("ranking")
-	cb=winc.NewComboBox(panel[1])
-	cb.InsertItem(0,"ALL")
-	cb.SetSelectedItem(0)
-	cb.OnSelectedChange().Bind(func(e *winc.Event) {
+	ls_section = winc.NewListView(panel[1])
+	ls_section.EnableEditLabels(false)
+	ls_section.AddColumn("select", 200)
+	p := &Item{[]string{"ALL"},true}
+	ls_section.AddItem(p)
+
+	ls_section.OnClick().Bind(func(e *winc.Event) {
 		if sections == nil{
 			notify(fmt.Sprintf("none ranking data"))
 		} else {
+			item_select:=ls_section.SelectedItem()
+			item_select_string:=item_select.Text()
+			select_section = item_select_string[0]
+			if select_section=="ALL" {
+				select_section=""
+			}
 			reload(sections)
 		}			
 	})	
+
 	ls = winc.NewListView(panel[1])
 	ls.EnableEditLabels(false)
 	ls.AddColumn("section", 120)
@@ -276,10 +289,9 @@ func makemainWindow(){
 	ls.AddColumn("call sign", 120)
 	ls.AddColumn("point", 120)
 	ls.AddColumn("score", 120)
-	ls.SetPos(10, 180)
 
 	dock1 = winc.NewSimpleDock(panel[1])
-	dock1.Dock(cb, winc.Top)
+	dock1.Dock(ls_section, winc.Left)
 	dock1.Dock(ls, winc.Fill)
 
 
@@ -293,11 +305,9 @@ func makemainWindow(){
 func reload(sections map[string] ([]Station)){
 	//define section combobox 
 	if first == 1{
-		m := 1
 		for section_name,_ := range sections {
-			cb.InsertItem(m,section_name)
-			keys[m]=section_name
-			m=m+1
+			p := &Item{[]string{section_name}, false}
+			ls_section.AddItem(p)
 		}
 	}
 		
@@ -306,8 +316,6 @@ func reload(sections map[string] ([]Station)){
 	if first != 1{
 		ls.DeleteAllItems()
 	}
-	//selected item
-	select_section:=keys[cb.SelectedItem()]
 
 
 	for section_name,section := range sections {
