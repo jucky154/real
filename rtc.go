@@ -269,10 +269,10 @@ func makemainWindow(){
 	ls_section.AddItem(p)
 
 	ls_section.OnClick().Bind(func(e *winc.Event) {
-		if sections == nil{
-			notify(fmt.Sprintf("none ranking data"))
-		} else {
-			if ls_section.SelectedCount() > 0{
+		if ls_section.SelectedCount() == 1{
+			if sections == nil{
+				notify(fmt.Sprintf("none ranking data"))
+			} else {
 				item_select:=ls_section.SelectedItem()
 				item_select_string:=item_select.Text()
 				select_section = item_select_string[0]
