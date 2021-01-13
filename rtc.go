@@ -272,13 +272,15 @@ func makemainWindow(){
 		if sections == nil{
 			notify(fmt.Sprintf("none ranking data"))
 		} else {
-			item_select:=ls_section.SelectedItem()
-			item_select_string:=item_select.Text()
-			select_section = item_select_string[0]
-			if select_section=="ALL" {
-				select_section=""
+			if ls_section.SelectedCount() > 0{
+				item_select:=ls_section.SelectedItem()
+				item_select_string:=item_select.Text()
+				select_section = item_select_string[0]
+				if select_section=="ALL" {
+					select_section=""
+				}
+				reload(sections)
 			}
-			reload(sections)
 		}			
 	})	
 
