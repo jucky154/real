@@ -10,6 +10,14 @@ This project provides a reference implementation of client software for the [REA
 
 [Download here](https://github.com/jg1vpp/real/releases).
 
+## Build
+
+- Run [zbuild](https://github.com/nextzlog/zylo) in this repository:
+
+```sh
+$ ./zbuild
+```
+
 ## Dependency
 
 - [ZyLO](https://github.com/nextzlog/zylo)
