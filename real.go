@@ -66,7 +66,7 @@ func (item Item) Checked() bool            { return item.checked }
 func (item *Item) SetChecked(checked bool) { item.checked = checked }
 func (item Item) ImageIndex() int          { return 0 }
 
-func zlaunch(cfg string) {
+func makeStartWindow() {
 	sub = 1
 	subWindow = winc.NewForm(nil)
 	subWindow.SetSize(400, 300)
@@ -96,10 +96,13 @@ func zlaunch(cfg string) {
 			makemainWindow()
 			go onmessage()
 		}
-
 	})
 	subWindow.Center()
 	subWindow.Show()
+}
+
+func zlaunch(cfg string) {
+	go makeStartWindow()
 }
 
 func zrevise(qso *zylo.QSO) {
