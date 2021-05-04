@@ -36,7 +36,6 @@ var (
 	select_section string
 	sections       map[string]([]Station)
 	stopCh         chan struct{}
-	doneCh         chan struct{}
 )
 
 type Station struct {
@@ -94,7 +93,6 @@ func zlaunch(cfg string) {
 			check = 0
 			select_section = ""
 			stopCh = make(chan struct{})
-			doneCh = make(chan struct{})
 			makemainWindow()
 			go onmessage()
 		}
@@ -137,7 +135,7 @@ func zdelete(qso *zylo.QSO) {
 }
 
 func zkpress(key int, source string) (block bool) {
-	zylo.Notify(fmt.Sprintf("zkpress %s", string(rune(key))))
+	//zylo.Notify(fmt.Sprintf("zkpress %s", string(rune(key))))
 	block = false
 	return
 }
@@ -153,7 +151,7 @@ func zfinish() {
 		subWindow.Close()
 	} else {
 		close(stopCh)
-		<-doneCh
+		time.Sleep(2*time.Second)
 		ws.Close()
 		mainWindow.Close()
 	}
@@ -169,18 +167,17 @@ func sendQSO(request byte, qso *zylo.QSO) {
 }
 
 func onmessage() {
-	defer func() { close(doneCh) }()
-
 	for {
-		_, data, err := ws.ReadMessage()
-		if err == nil {
-			json.Unmarshal(data, &sections)
-			reload(sections)
-		}
 		select {
 		case <-stopCh:
+			zylo.Notify(fmt.Sprintf("real.dll %s", "stop routine"))
 			return
 		default:
+			_, data, err := ws.ReadMessage()
+			if err == nil {
+				json.Unmarshal(data, &sections)
+				reload(sections)
+			}
 		}
 	}
 }
