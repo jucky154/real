@@ -99,6 +99,7 @@ func makeStartWindow() {
 	})
 	subWindow.Center()
 	subWindow.Show()
+	winc.RunMainLoop()
 }
 
 func zlaunch(cfg string) {
