@@ -158,7 +158,7 @@ func zfinish() {
 }
 
 func sendQSO(request byte, qso *zylo.QSO) {
-	log := append(*new(zylo.Log), qso)
+	log := append(*new(zylo.Log), *qso)
 	msg := append([]byte{request}, log.Dump(time.Local)...)
 	err := ws.WriteMessage(websocket.BinaryMessage, msg)
 	if err != nil {
