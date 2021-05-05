@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+	"time"	
 )
 
 var (
@@ -24,15 +24,14 @@ var (
 	}
 	url            string
 	mainWindow     *winc.Form
-	subWindow      *winc.Form
 	ls             *winc.ListView
 	dock           *winc.SimpleDock
 	dock1          *winc.SimpleDock
 	panel          [99]*winc.Panel
 	ls_section     *winc.ListView
 	first          int
-	sub            int
 	check          int
+	sub	       int
 	select_section string
 	sections       map[string]([]Station)
 	stopCh         chan struct{}
@@ -66,41 +65,45 @@ func (item Item) Checked() bool            { return item.checked }
 func (item *Item) SetChecked(checked bool) { item.checked = checked }
 func (item Item) ImageIndex() int          { return 0 }
 
+
 func zlaunch(cfg string) {
-	sub = 1
-	subWindow = winc.NewForm(nil)
-	subWindow.SetSize(400, 300)
-	subWindow.SetText("Registration")
-	edt := winc.NewEdit(subWindow)
-	edt.SetPos(10, 20)
-	// Most Controls have default size unless SetSize is called.
+	first = 1
+	check = 0
+	sub=1
+	select_section = ""
+	makemainWindow()
+	regdialog := winc.NewDialog(mainWindow)
+	regdialog.SetText("Registration")
+	regdialog.SetSize(250, 150)
+	edt := winc.NewEdit(regdialog)
 	edt.SetText("wss://realtime.allja1.org/agent/")
-	btn := winc.NewPushButton(subWindow)
+	edt.SetPos(19, 20)
+	btn := winc.NewPushButton(regdialog)
 	btn.SetText("Register")
-	btn.SetPos(40, 50)
+	btn.SetPos(67, 50)
 	btn.SetSize(100, 40)
 	btn.OnClick().Bind(func(e *winc.Event) {
 		url := edt.ControlBase.Text()
-		ws.Dial(url, nil)
-		err := ws.GetDialError()
-		if err != nil {
-			zylo.Notify(err.Error())
+		if url=="wss://realtime.allja1.org/agent/" {
+			zylo.Notify(fmt.Sprintf("error %s", "please add your id"))
 		} else {
-			subWindow.Close()
-			sub = 0
-			zylo.Notify(fmt.Sprintf("successfully connected to %s", url))
-			first = 1
-			check = 0
-			select_section = ""
-			stopCh = make(chan struct{})
-			makemainWindow()
-			go onmessage()
+			ws.Dial(url, nil)
+			err := ws.GetDialError()
+			if err != nil {
+				zylo.Notify(err.Error())
+			} else {
+				regdialog.Close()
+				zylo.Notify(fmt.Sprintf("successfully connected to %s", url))
+				stopCh = make(chan struct{})
+				sub=0
+				go onmessage()
+			}
 		}
-
 	})
-	subWindow.Center()
-	subWindow.Show()
+	regdialog.Center()
+	regdialog.Show()
 }
+
 
 func zrevise(qso *zylo.QSO) {
 	qso.SetMul1(qso.GetRcvd())
@@ -147,14 +150,11 @@ func zfclick(btn int, source string) (block bool) {
 }
 
 func zfinish() {
-	if sub == 1 {
-		subWindow.Close()
-	} else {
+	if sub == 0 {
 		close(stopCh)
-		time.Sleep(2*time.Second)
 		ws.Close()
-		mainWindow.Close()
 	}
+	mainWindow.Close()
 }
 
 func sendQSO(request byte, qso *zylo.QSO) {
@@ -189,8 +189,8 @@ func makemainWindow() {
 	mainWindow.SetText("Ranking")
 	dock = winc.NewSimpleDock(mainWindow)
 	tabs := winc.NewTabView(mainWindow)
-	//check rank
 
+	//check rank
 	panel[0] = tabs.AddPanel("check rivals")
 	edt := winc.NewEdit(panel[0])
 	edt.SetPos(10, 20)
