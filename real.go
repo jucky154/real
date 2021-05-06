@@ -5,9 +5,7 @@
 package main
 
 import (
-	"C"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/nextzlog/zylo"
 	"github.com/recws-org/recws"
@@ -15,7 +13,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"	
+	"time"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
@@ -31,7 +30,7 @@ var (
 	ls_section     *winc.ListView
 	first          int
 	check          int
-	sub	       int
+	sub            int
 	select_section string
 	sections       map[string]([]Station)
 	stopCh         chan struct{}
@@ -65,60 +64,51 @@ func (item Item) Checked() bool            { return item.checked }
 func (item *Item) SetChecked(checked bool) { item.checked = checked }
 func (item Item) ImageIndex() int          { return 0 }
 
+func zlaunch() {}
 
-func zlaunch(cfg string) {
+func zattach(name, path string) {
 	first = 1
 	check = 0
-	sub=1
+	sub = 1
 	select_section = ""
 	makemainWindow()
-	regdialog := winc.NewDialog(mainWindow)
-	regdialog.SetText("Registration")
-	regdialog.SetSize(250, 150)
-	edt := winc.NewEdit(regdialog)
-	edt.SetText("wss://realtime.allja1.org/agent/")
-	edt.SetPos(19, 20)
-	btn := winc.NewPushButton(regdialog)
-	btn.SetText("Register")
-	btn.SetPos(67, 50)
-	btn.SetSize(100, 40)
-	btn.OnClick().Bind(func(e *winc.Event) {
-		url := edt.ControlBase.Text()
-		if url=="wss://realtime.allja1.org/agent/" {
-			zylo.Notify(fmt.Sprintf("error %s", "please add your id"))
+	url,ok := zylo.Prompt("Registration", "wss://realtime.allja1.org/agent/")
+	if ok {
+		ws.Dial(url, nil)
+		err := ws.GetDialError()
+		if err != nil {
+			zylo.Notify(err.Error())
 		} else {
-			ws.Dial(url, nil)
-			err := ws.GetDialError()
-			if err != nil {
-				zylo.Notify(err.Error())
-			} else {
-				regdialog.Close()
-				zylo.Notify(fmt.Sprintf("successfully connected to %s", url))
-				stopCh = make(chan struct{})
-				sub=0
-				go onmessage()
-			}
+			zylo.Notify("successfully connected to %s", url)
+			stopCh = make(chan struct{})
+			sub = 0
+			go onmessage()
 		}
-	})
-	regdialog.Center()
-	regdialog.Show()
+	}
 }
 
-
-func zrevise(qso *zylo.QSO) {
-	qso.SetMul1(qso.GetRcvd())
-}
-
-func zverify(qso *zylo.QSO) (score int) {
-	score = 1
+func zverify(list zylo.Log) (score int) {
+	for _, qso := range list {
+		call := qso.GetCall()
+		rcvd := qso.GetRcvd()
+		qso.SetMul1(rcvd)
+		if call != "" && rcvd != "" {
+			score = 1
+		}
+	}
 	return
 }
 
-func zupdate(log zylo.Log) (total int) {
-	for i := 0; i < len(log); i++ {
-		zylo.Notify(fmt.Sprintf("QSO[%d] with %s", i, log[i].GetCall()))
+func zupdate(list zylo.Log) (total int) {
+	calls := mapset.NewSet()
+	mults := mapset.NewSet()
+	for _, qso := range list {
+		calls.Add(qso.GetCall())
+		mults.Add(qso.GetMul1())
 	}
-	total = len(log)
+	score := calls.Cardinality()
+	multi := mults.Cardinality()
+	total = score * multi
 	return
 }
 
@@ -127,29 +117,31 @@ const (
 	DELETE = 1
 )
 
-func zinsert(qso *zylo.QSO) {
-	sendQSO(INSERT, qso)
-	zylo.Notify(fmt.Sprintf("append QSO with %s", qso.GetCall()))
+func zinsert(list zylo.Log) {
+	for _, qso := range list {
+		sendQSO(INSERT, qso)
+		zylo.Notify("append QSO with %s", qso.GetCall())
+	}
 }
 
-func zdelete(qso *zylo.QSO) {
-	sendQSO(DELETE, qso)
-	zylo.Notify(fmt.Sprintf("delete QSO with %s", qso.GetCall()))
+func zdelete(list zylo.Log) {
+	for _, qso := range list {
+		sendQSO(DELETE, qso)
+		zylo.Notify("delete QSO with %s", qso.GetCall())
+	}
 }
 
 func zkpress(key int, source string) (block bool) {
-	//zylo.Notify(fmt.Sprintf("zkpress %s", string(rune(key))))
 	block = false
 	return
 }
 
 func zfclick(btn int, source string) (block bool) {
-	zylo.Notify(fmt.Sprintf("zfclick %s", string(rune(btn))))
 	block = false
 	return
 }
 
-func zfinish() {
+func zdetach() {
 	if sub == 0 {
 		close(stopCh)
 		ws.Close()
@@ -157,8 +149,10 @@ func zfinish() {
 	mainWindow.Close()
 }
 
-func sendQSO(request byte, qso *zylo.QSO) {
-	log := append(*new(zylo.Log), *qso)
+func zfinish() {}
+
+func sendQSO(request byte, qso zylo.QSO) {
+	log := append(*new(zylo.Log), qso)
 	msg := append([]byte{request}, log.Dump(time.Local)...)
 	err := ws.WriteMessage(websocket.BinaryMessage, msg)
 	if err != nil {
@@ -170,7 +164,7 @@ func onmessage() {
 	for {
 		select {
 		case <-stopCh:
-			zylo.Notify(fmt.Sprintf("real.dll %s", "stop routine"))
+			zylo.Notify("real.dll stop routine")
 			return
 		default:
 			_, data, err := ws.ReadMessage()
@@ -210,7 +204,7 @@ func makemainWindow() {
 
 	btn.OnClick().Bind(func(e *winc.Event) {
 		if sections == nil {
-			zylo.Notify(fmt.Sprintf("none ranking data"))
+			zylo.Notify("none ranking data")
 		} else {
 			if check != 0 {
 				ls_rank.DeleteAllItems()
@@ -239,7 +233,7 @@ func makemainWindow() {
 				}
 			}
 			if check == 0 {
-				zylo.Notify(fmt.Sprintf("your rival doesn't register this contest"))
+				zylo.Notify("your rival doesn't register this contest")
 			}
 		}
 	})
@@ -258,7 +252,7 @@ func makemainWindow() {
 	ls_section.OnClick().Bind(func(e *winc.Event) {
 		if ls_section.SelectedCount() == 1 {
 			if sections == nil {
-				zylo.Notify(fmt.Sprintf("none ranking data"))
+				zylo.Notify("none ranking data")
 			} else {
 				item_select := ls_section.SelectedItem()
 				item_select_string := item_select.Text()
