@@ -63,13 +63,14 @@ func (item Item) Checked() bool            { return item.checked }
 func (item *Item) SetChecked(checked bool) { item.checked = checked }
 func (item Item) ImageIndex() int          { return 0 }
 
-func zlaunch() {}
+func zlaunch() {
+	makemainWindow()
+}
 
 func zattach(name, path string) {
 	first = true
 	check = false
 	select_section = ""
-	makemainWindow()
 	url,ok := zylo.Prompt("Registration", "wss://realtime.allja1.org/agent/")
 	if ok {
 		ws.Dial(url, nil)
