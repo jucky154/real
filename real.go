@@ -103,8 +103,12 @@ func zupdate(list zylo.Log) (total int) {
 	calls := mapset.NewSet()
 	mults := mapset.NewSet()
 	for _, qso := range list {
-		calls.Add(qso.GetCall())
-		mults.Add(qso.GetMul1())
+		call := qso.GetCall()
+		mul1 := qso.GetMul1()
+		new1 := mults.Contains(mul1)
+		qso.SetNewMul1(new1)
+		calls.Add(call)
+		mults.Add(mul1)
 	}
 	score := calls.Cardinality()
 	multi := mults.Cardinality()
