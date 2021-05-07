@@ -28,9 +28,8 @@ var (
 	dock1          *winc.SimpleDock
 	panel          [99]*winc.Panel
 	ls_section     *winc.ListView
-	first          int
-	check          int
-	sub            int
+	first          bool
+	check          bool
 	select_section string
 	sections       map[string]([]Station)
 	stopCh         chan struct{}
@@ -67,9 +66,8 @@ func (item Item) ImageIndex() int          { return 0 }
 func zlaunch() {}
 
 func zattach(name, path string) {
-	first = 1
-	check = 0
-	sub = 1
+	first = true
+	check = false
 	select_section = ""
 	makemainWindow()
 	url,ok := zylo.Prompt("Registration", "wss://realtime.allja1.org/agent/")
@@ -81,7 +79,6 @@ func zattach(name, path string) {
 		} else {
 			zylo.Notify("successfully connected to %s", url)
 			stopCh = make(chan struct{})
-			sub = 0
 			go onmessage()
 		}
 	}
@@ -105,7 +102,7 @@ func zupdate(list zylo.Log) (total int) {
 	for _, qso := range list {
 		call := qso.GetCall()
 		mul1 := qso.GetMul1()
-		new1 := mults.Contains(mul1)
+		new1 := !mults.Contains(mul1)
 		qso.SetNewMul1(new1)
 		calls.Add(call)
 		mults.Add(mul1)
@@ -146,7 +143,7 @@ func zfclick(btn int, source string) (block bool) {
 }
 
 func zdetach() {
-	if sub == 0 {
+	if ws.IsConnected() {
 		close(stopCh)
 		ws.Close()
 	}
@@ -210,11 +207,11 @@ func makemainWindow() {
 		if sections == nil {
 			zylo.Notify("none ranking data")
 		} else {
-			if check != 0 {
+			if check {
 				ls_rank.DeleteAllItems()
 			}
 
-			check = 0
+			check = false
 			callsign := edt.ControlBase.Text()
 			for section_name, section := range sections {
 				sort.Sort(ByTOTAL(section))
@@ -232,11 +229,11 @@ func makemainWindow() {
 					if strings.Index(station.CALL, callsign) >= 0 {
 						p := &Item{[]string{section_name, strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
 						ls_rank.AddItem(p)
-						check = 1
+						check = true
 					}
 				}
 			}
-			if check == 0 {
+			if ! check {
 				zylo.Notify("your rival doesn't register this contest")
 			}
 		}
@@ -290,7 +287,7 @@ func makemainWindow() {
 
 func reload(sections map[string]([]Station)) {
 	//define section combobox
-	if first == 1 {
+	if first {
 		for section_name, _ := range sections {
 			p := &Item{[]string{section_name}, false}
 			ls_section.AddItem(p)
@@ -299,7 +296,7 @@ func reload(sections map[string]([]Station)) {
 
 	//delete ranking
 
-	if first != 1 {
+	if ! first {
 		ls.DeleteAllItems()
 	}
 
@@ -324,7 +321,7 @@ func reload(sections map[string]([]Station)) {
 		}
 		// --- Dock(list and tab)
 		dock1.Dock(ls, winc.Fill)
-		first = 0
+		first = false
 	}
 }
 
