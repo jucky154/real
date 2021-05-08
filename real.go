@@ -81,6 +81,7 @@ func zattach(name, path string) {
 			zylo.Notify("successfully connected to %s", url)
 			stopCh = make(chan struct{})
 			go onmessage()
+			mainWindow.Show()
 		}
 	}
 }
@@ -283,7 +284,6 @@ func makemainWindow() {
 	dock.Dock(tabs, winc.Top)
 	dock.Dock(tabs.Panels(), winc.Fill)
 	mainWindow.Center()
-	mainWindow.Show()
 }
 
 func reload(sections map[string]([]Station)) {
