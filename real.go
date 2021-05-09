@@ -85,10 +85,13 @@ func zattach(name, path string) {
 			mainWindow.Show()
 		}
 	}
+	/*
+	This is a sample code of adding a QSO to zLog:
 	qso := new(zylo.QSO)
 	qso.SetCall("JA1FOO")
 	qso.SetRcvd("100110")
 	qso.Insert()
+	*/
 }
 
 func zverify(list zylo.Log) (score int) {
