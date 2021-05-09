@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_"embed"
 	mapset "github.com/deckarep/golang-set"
 )
 
@@ -64,6 +65,28 @@ func (item Item) Checked() bool            { return item.checked }
 func (item *Item) SetChecked(checked bool) { item.checked = checked }
 func (item Item) ImageIndex() int          { return 0 }
 
+type key struct {
+    	multinumber	string
+	band 		string
+}
+
+var mulmap map[key]int
+
+//go:embed ja1.dat
+var ja1list string
+
+func makemap() {
+	mulmap=make(map[key]int)
+	arr:=strings.Fields(ja1list)
+	for index , value := range arr{
+		if index%2==0{
+			for cnt := 0; cnt < 16; cnt++ {
+				mulmap[key{value,strconv.Itoa(cnt)}]=1
+			}
+		}
+    	}
+}
+
 func zlaunch() {
 	makemainWindow()
 }
@@ -95,12 +118,21 @@ func zattach(name, path string) {
 }
 
 func zverify(list zylo.Log) (score int) {
+	makemap()
 	for _, qso := range list {
 		call := qso.GetCall()
 		rcvd := qso.GetRcvd()
+		band := string(qso.Band)
 		qso.SetMul1(rcvd)
-		if call != "" && rcvd != "" {
+		if call != "" && mulmap[key{rcvd,band}]>0 {
 			score = 1
+			if mulmap[key{rcvd,band}] == 1{
+				qso.SetNewMul1(true)
+			} 
+			if mulmap[key{rcvd,band}] >1 {
+				qso.SetNewMul1(false)
+			}
+			mulmap[key{rcvd,band}]=mulmap[key{rcvd,band}]+1	
 		}
 	}
 	return
