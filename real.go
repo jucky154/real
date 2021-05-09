@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gen2brain/dlgs"
 	"github.com/gorilla/websocket"
 	"github.com/nextzlog/zylo"
 	"github.com/recws-org/recws"
@@ -71,7 +72,7 @@ func zattach(name, path string) {
 	first = true
 	check = false
 	select_section = ""
-	url,ok := zylo.Prompt("Registration", "wss://realtime.allja1.org/agent/")
+	url,ok,_ := dlgs.Entry("ZyLO", "Registration", "wss://realtime.allja1.org/agent/")
 	if ok {
 		ws.Dial(url, nil)
 		err := ws.GetDialError()
