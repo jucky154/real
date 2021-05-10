@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	//	"os/exec"
+	"os/exec"
 	"fmt"
 	"net/http"
 )
@@ -139,13 +139,12 @@ func zattach(name, path string) {
 	first = true
 	check = false
 	select_section = ""
-	conurl = "realtime.allja1.org/"
+	conurl = "https://realtime.allja1.org/"
 	regurl = "wss://realtime.allja1.org/agent/"
 	flgurl = false
 	cau := "You have not registered the contest yet. Please open "
 	dlgs.Info("Caution", cau+conurl)
-	//	exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", conurl).Start()
-	//	this code cannnot open the page from dll
+	exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", conurl).Start()
 	go makehttp()
 
 	/*
