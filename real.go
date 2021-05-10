@@ -5,7 +5,9 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/gen2brain/dlgs"
 	"github.com/gorilla/websocket"
 	"github.com/nextzlog/zylo"
@@ -15,8 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	_"embed"
-	mapset "github.com/deckarep/golang-set"
+	//	"os/exec"
+	"fmt"
+	"net/http"
 )
 
 var (
@@ -24,6 +27,10 @@ var (
 		KeepAliveTimeout: 30 * time.Second,
 	}
 	url            string
+	geturl         string
+	regurl         string
+	conurl         string
+	flgurl         bool
 	mainWindow     *winc.Form
 	ls             *winc.ListView
 	dock           *winc.SimpleDock
@@ -66,8 +73,8 @@ func (item *Item) SetChecked(checked bool) { item.checked = checked }
 func (item Item) ImageIndex() int          { return 0 }
 
 type key struct {
-    	multinumber	string
-	band 		string
+	multinumber string
+	band        string
 }
 
 var mulmap map[key]int
@@ -76,15 +83,52 @@ var mulmap map[key]int
 var ja1list string
 
 func makemap() {
-	mulmap=make(map[key]int)
-	arr:=strings.Fields(ja1list)
-	for index , value := range arr{
-		if index%2==0{
+	mulmap = make(map[key]int)
+	arr := strings.Fields(ja1list)
+	for index, value := range arr {
+		if index%2 == 0 {
 			for cnt := 0; cnt < 16; cnt++ {
-				mulmap[key{value,strconv.Itoa(cnt)}]=1
+				mulmap[key{value, strconv.Itoa(cnt)}] = 1
 			}
 		}
-    	}
+	}
+}
+
+func conws() {
+	url = regurl + geturl
+	ws.Dial(url, nil)
+	err := ws.GetDialError()
+	if err != nil {
+		zylo.Notify(err.Error())
+	} else {
+		zylo.Notify("successfully connected to %s", url)
+		stopCh = make(chan struct{})
+		go onmessage()
+		mainWindow.Show()
+	}
+}
+
+func checkserver(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "get url!")
+	r.ParseForm()
+	_, tf := r.Form["url_long"]
+	if flgurl == false {
+		if tf == true {
+			for _, v := range r.Form {
+				geturl = strings.Join(v, "")
+				flgurl = true
+				conws()
+			}
+		}
+	}
+}
+
+func makehttp() {
+	http.HandleFunc("/", checkserver)
+	err := http.ListenAndServe(":12345", nil)
+	if err != nil {
+		zylo.Notify(err.Error())
+	}
 }
 
 func zlaunch() {
@@ -95,25 +139,21 @@ func zattach(name, path string) {
 	first = true
 	check = false
 	select_section = ""
-	url,ok,_ := dlgs.Entry("ZyLO", "Registration", "wss://realtime.allja1.org/agent/")
-	if ok {
-		ws.Dial(url, nil)
-		err := ws.GetDialError()
-		if err != nil {
-			zylo.Notify(err.Error())
-		} else {
-			zylo.Notify("successfully connected to %s", url)
-			stopCh = make(chan struct{})
-			go onmessage()
-			mainWindow.Show()
-		}
-	}
+	conurl = "realtime.allja1.org/"
+	regurl = "wss://realtime.allja1.org/agent/"
+	flgurl = false
+	cau := "You have not registered the contest yet. Please open "
+	dlgs.Info("Caution", cau+conurl)
+	//	exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", conurl).Start()
+	//	this code cannnot open the page from dll
+	go makehttp()
+
 	/*
-	This is a sample code of adding a QSO to zLog:
-	qso := new(zylo.QSO)
-	qso.SetCall("JA1FOO")
-	qso.SetRcvd("100110")
-	qso.Insert()
+		This is a sample code of adding a QSO to zLog:
+		qso := new(zylo.QSO)
+		qso.SetCall("JA1FOO")
+		qso.SetRcvd("100110")
+		qso.Insert()
 	*/
 }
 
@@ -124,15 +164,15 @@ func zverify(list zylo.Log) (score int) {
 		rcvd := qso.GetRcvd()
 		band := string(qso.Band)
 		qso.SetMul1(rcvd)
-		if call != "" && mulmap[key{rcvd,band}]>0 {
+		if call != "" && mulmap[key{rcvd, band}] > 0 {
 			score = 1
-			if mulmap[key{rcvd,band}] == 1{
+			if mulmap[key{rcvd, band}] == 1 {
 				qso.SetNewMul1(true)
-			} 
-			if mulmap[key{rcvd,band}] >1 {
+			}
+			if mulmap[key{rcvd, band}] > 1 {
 				qso.SetNewMul1(false)
 			}
-			mulmap[key{rcvd,band}]=mulmap[key{rcvd,band}]+1	
+			mulmap[key{rcvd, band}] = mulmap[key{rcvd, band}] + 1
 		}
 	}
 	return
@@ -275,7 +315,7 @@ func makemainWindow() {
 					}
 				}
 			}
-			if ! check {
+			if !check {
 				zylo.Notify("your rival doesn't register this contest")
 			}
 		}
@@ -337,7 +377,7 @@ func reload(sections map[string]([]Station)) {
 
 	//delete ranking
 
-	if ! first {
+	if !first {
 		ls.DeleteAllItems()
 	}
 
