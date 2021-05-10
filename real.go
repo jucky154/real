@@ -7,19 +7,19 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	mapset "github.com/deckarep/golang-set"
-	"github.com/gen2brain/dlgs"
 	"github.com/gorilla/websocket"
 	"github.com/nextzlog/zylo"
 	"github.com/recws-org/recws"
 	"github.com/tadvi/winc"
+	"io/ioutil"
+	"net/http"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"os/exec"
-	"fmt"
-	"net/http"
 )
 
 var (
@@ -131,6 +131,19 @@ func makehttp() {
 	}
 }
 
+func opencfg(path string) {
+	cfgdata, _ := ioutil.ReadFile(path)
+	cfgarr := strings.Fields(string(cfgdata))
+	for index, value := range cfgarr {
+		if value == "conurl" {
+			conurl = cfgarr[index+1]
+		}
+		if value == "regurl" {
+			regurl = cfgarr[index+1]
+		}
+	}
+}
+
 func zlaunch() {
 	makemainWindow()
 }
@@ -139,11 +152,8 @@ func zattach(name, path string) {
 	first = true
 	check = false
 	select_section = ""
-	conurl = "https://realtime.allja1.org/"
-	regurl = "wss://realtime.allja1.org/agent/"
 	flgurl = false
-	cau := "You have not registered the contest yet. Please open "
-	dlgs.Info("Caution", cau+conurl)
+	opencfg(path)
 	exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", conurl).Start()
 	go makehttp()
 
