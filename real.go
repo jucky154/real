@@ -171,7 +171,7 @@ func zverify(list zylo.Log) (score int) {
 	for _, qso := range list {
 		call := qso.GetCall()
 		rcvd := qso.GetRcvd()
-		band := strconv.Itoa(int(qso.Band))
+		band := strconv.Itoa(int(qso.Band)))
 		qso.SetMul1(rcvd)
 		if call != "" && mulmap[key{rcvd, band}] > 0 {
 			score = 1
