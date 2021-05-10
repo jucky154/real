@@ -167,11 +167,10 @@ func zattach(name, path string) {
 }
 
 func zverify(list zylo.Log) (score int) {
-	makemap()
 	for _, qso := range list {
 		call := qso.GetCall()
 		rcvd := qso.GetRcvd()
-		band := strconv.Itoa(int(qso.Band))
+		band := strconv.Itoa(int(qso.Band)))
 		qso.SetMul1(rcvd)
 		if call != "" && mulmap[key{rcvd, band}] > 0 {
 			score = 1
@@ -210,6 +209,7 @@ const (
 )
 
 func zinsert(list zylo.Log) {
+     	makemap()
 	for _, qso := range list {
 		sendQSO(INSERT, qso)
 		zylo.Notify("append QSO with %s", qso.GetCall())
@@ -217,6 +217,7 @@ func zinsert(list zylo.Log) {
 }
 
 func zdelete(list zylo.Log) {
+     	makemap()
 	for _, qso := range list {
 		sendQSO(DELETE, qso)
 		zylo.Notify("delete QSO with %s", qso.GetCall())
