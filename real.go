@@ -151,7 +151,6 @@ func opencfg(path string) {
 	for index, value := range cfgarr {
 		if value == "conurl" {
 			conurl = cfgarr[index+1]
-			//conurl = "http://localhost:12345/?url_long=6c7bbe5b-99fc-401b-a0bb-95cd1f9576bc"
 		}
 		if value == "regurl" {
 			regurl = cfgarr[index+1]
