@@ -310,12 +310,12 @@ func makemainWindow() {
 				before_score := -1
 				wait_rank := 0
 				for _, station := range section {
-					if before_score == station.SCORE {
+					if before_score == station.TOTAL {
 						wait_rank = wait_rank + 1
 					} else {
 						j = j + 1 + wait_rank
 						wait_rank = 0
-						before_score = station.SCORE
+						before_score = station.TOTAL
 					}
 					if strings.Index(station.CALL, callsign) >= 0 {
 						p := &Item{[]string{section_name, strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
@@ -397,12 +397,12 @@ func reload(sections map[string]([]Station)) {
 		before_score := -1
 		wait_rank := 0
 		for _, station := range section {
-			if before_score == station.SCORE {
+			if before_score == station.TOTAL {
 				wait_rank = wait_rank + 1
 			} else {
 				j = j + 1 + wait_rank
 				wait_rank = 0
-				before_score = station.SCORE
+				before_score = station.TOTAL
 			}
 			if strings.Index(section_name, select_section) >= 0 {
 				p := &Item{[]string{section_name, strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
