@@ -8,18 +8,20 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	mapset "github.com/deckarep/golang-set"
-	"github.com/gorilla/websocket"
-	"github.com/nextzlog/zylo"
-	"github.com/recws-org/recws"
-	"github.com/tadvi/winc"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	mapset "github.com/deckarep/golang-set"
+	"github.com/gorilla/websocket"
+	"github.com/nextzlog/zylo"
+	"github.com/recws-org/recws"
+	"github.com/tadvi/winc"
 )
 
 var (
@@ -30,6 +32,7 @@ var (
 	geturl         string
 	regurl         string
 	conurl         string
+	path_cfg       string
 	flgurl         bool
 	mainWindow     *winc.Form
 	ls             *winc.ListView
@@ -117,10 +120,20 @@ func checkserver(w http.ResponseWriter, r *http.Request) {
 			for _, v := range r.Form {
 				geturl = strings.Join(v, "")
 				flgurl = true
+				append_cfg()
 				conws()
 			}
 		}
 	}
+}
+
+//append get url to real.cfg
+func append_cfg() {
+	//ここでconurlを追記する
+	f, _ := os.OpenFile(path_cfg, os.O_APPEND|os.O_WRONLY, 0600)
+	defer f.Close()
+
+	fmt.Fprintln(f, "\n"+"conurl  http://localhost:12345/?url_long="+geturl)
 }
 
 func makehttp() {
@@ -132,15 +145,18 @@ func makehttp() {
 }
 
 func opencfg(path string) {
+	path_cfg = path
 	cfgdata, _ := ioutil.ReadFile(path)
 	cfgarr := strings.Fields(string(cfgdata))
 	for index, value := range cfgarr {
 		if value == "conurl" {
 			conurl = cfgarr[index+1]
+			//conurl = "http://localhost:12345/?url_long=6c7bbe5b-99fc-401b-a0bb-95cd1f9576bc"
 		}
 		if value == "regurl" {
 			regurl = cfgarr[index+1]
 		}
+
 	}
 }
 
