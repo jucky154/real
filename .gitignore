@@ -3,6 +3,7 @@
 *.so
 *.dll
 *.exe
+*.fmt
 *.dylib
 go.sum
 zbuild
