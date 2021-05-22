@@ -34,6 +34,7 @@ Feel free to contact [@nextzlog](https://twitter.com/nextzlog) on Twitter.
 
 - JG1VPP
 - JS2FVO
+- JJ1GUJ
 
 ### Clauses
 

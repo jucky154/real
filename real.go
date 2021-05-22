@@ -8,6 +8,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
+	"github.com/nextzlog/zylo"
+	"github.com/recws-org/recws"
+	"github.com/tadvi/winc"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -16,12 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	mapset "github.com/deckarep/golang-set"
-	"github.com/gorilla/websocket"
-	"github.com/nextzlog/zylo"
-	"github.com/recws-org/recws"
-	"github.com/tadvi/winc"
 )
 
 var (
@@ -55,46 +53,41 @@ type Station struct {
 
 type ByTOTAL []Station
 
-func (a ByTOTAL) Len() int           { return len(a) }
-func (a ByTOTAL) Less(i, j int) bool { return a[i].TOTAL > a[j].TOTAL }
-func (a ByTOTAL) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByTOTAL) Len() int {
+	return len(a)
+}
+
+func (a ByTOTAL) Less(i, j int) bool {
+	return a[i].TOTAL > a[j].TOTAL
+}
+
+func (a ByTOTAL) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
 
 type Item struct {
 	T       []string
 	checked bool
 }
 
-type Atem struct {
-	T []string
+func (item Item) Text() []string {
+	return item.T
 }
 
-func (item Item) Text() []string    { return item.T }
-func (item *Item) SetText(s string) { item.T[0] = s }
-
-func (item Item) Checked() bool            { return item.checked }
-func (item *Item) SetChecked(checked bool) { item.checked = checked }
-func (item Item) ImageIndex() int          { return 0 }
+func (item Item) ImageIndex() int {
+	return 0
+}
 
 type key struct {
 	multinumber string
 	band        string
 }
 
-var mulmap map[key]int
-
 //go:embed ja1.dat
 var ja1list string
 
-func makemap() {
-	mulmap = make(map[key]int)
-	arr := strings.Fields(ja1list)
-	for index, value := range arr {
-		if index%2 == 0 {
-			for cnt := 0; cnt < 16; cnt++ {
-				mulmap[key{value, strconv.Itoa(cnt)}] = 1
-			}
-		}
-	}
+func zcities() string {
+	return ja1list
 }
 
 func conws() {
@@ -171,51 +164,20 @@ func zattach(name, path string) {
 	opencfg(path)
 	exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", conurl).Start()
 	go makehttp()
-
-	/*
-		This is a sample code of adding a QSO to zLog:
-		qso := new(zylo.QSO)
-		qso.SetCall("JA1FOO")
-		qso.SetRcvd("100110")
-		qso.Insert()
-	*/
 }
 
-func zverify(list zylo.Log) (score int) {
-	makemap()
-	for _, qso := range list {
-		call := qso.GetCall()
-		rcvd := qso.GetRcvd()
-		band := strconv.Itoa(int(qso.Band))
-		qso.SetMul1(rcvd)
-		if call != "" && mulmap[key{rcvd, band}] > 0 {
-			score = 1
-			if mulmap[key{rcvd, band}] == 1 {
-				qso.SetNewMul1(true)
-			}
-			if mulmap[key{rcvd, band}] > 1 {
-				qso.SetNewMul1(false)
-			}
-			mulmap[key{rcvd, band}] = mulmap[key{rcvd, band}] + 1
-		}
+func zverify(qso *zylo.QSO) {
+	rcvd := qso.GetRcvd()
+	qso.SetMul1(rcvd)
+	if qso.Dupe {
+		qso.Score = 0
+	} else {
+		qso.Score = 1
 	}
-	return
 }
 
-func zupdate(list zylo.Log) (total int) {
-	calls := mapset.NewSet()
-	mults := mapset.NewSet()
-	for _, qso := range list {
-		call := qso.GetCall()
-		mul1 := qso.GetMul1()
-		new1 := !mults.Contains(mul1)
-		qso.SetNewMul1(new1)
-		calls.Add(call)
-		mults.Add(mul1)
-	}
-	score := calls.Cardinality()
-	multi := mults.Cardinality()
-	total = score * multi
+func zpoints(score, mults int) (total int) {
+	total = score * mults
 	return
 }
 
@@ -224,27 +186,21 @@ const (
 	DELETE = 1
 )
 
-func zinsert(list zylo.Log) {
-	for _, qso := range list {
-		sendQSO(INSERT, qso)
-		zylo.Notify("append QSO with %s", qso.GetCall())
-	}
+func zinsert(qso *zylo.QSO) {
+	sendQSO(INSERT, qso)
+	zylo.Notify("append QSO with %s", qso.GetCall())
 }
 
-func zdelete(list zylo.Log) {
-	for _, qso := range list {
-		sendQSO(DELETE, qso)
-		zylo.Notify("delete QSO with %s", qso.GetCall())
-	}
+func zdelete(qso *zylo.QSO) {
+	sendQSO(DELETE, qso)
+	zylo.Notify("delete QSO with %s", qso.GetCall())
 }
 
-func zkpress(key int, source string) (block bool) {
-	block = false
+func zeditor(key int, source string) (block bool) {
 	return
 }
 
-func zfclick(btn int, source string) (block bool) {
-	block = false
+func zbutton(btn int, source string) (block bool) {
 	return
 }
 
@@ -258,9 +214,8 @@ func zdetach() {
 
 func zfinish() {}
 
-func sendQSO(request byte, qso zylo.QSO) {
-	log := append(*new(zylo.Log), qso)
-	msg := append([]byte{request}, log.Dump(time.Local)...)
+func sendQSO(request byte, qso *zylo.QSO) {
+	msg := append([]byte{request}, qso.Dump(time.Local)...)
 	err := ws.WriteMessage(websocket.BinaryMessage, msg)
 	if err != nil {
 		zylo.Notify(err.Error())

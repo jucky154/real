@@ -4,7 +4,10 @@
 *.dll
 *.exe
 *.dylib
+go.mod
+go.sum
 zbuild
 zbuild-*
+asset.go
 !.github
 !.gitignore
