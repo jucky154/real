@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/nextzlog/zylo"
 	"github.com/recws-org/recws"
 	"github.com/tadvi/winc"
 	"io/ioutil"
@@ -86,18 +85,27 @@ type key struct {
 //go:embed ja1.dat
 var ja1list string
 
-func zcities() string {
-	return ja1list
+func OnLaunchEvent() {
+	CityMultiList = ja1list
+	OnAttachEvent = onAttachEvent
+	OnVerifyEvent = onVerifyEvent
+	OnPointsEvent = onPointsEvent
+	OnInsertEvent = onInsertEvent
+	OnDeleteEvent = onDeleteEvent
+	OnDetachEvent = onDetachEvent
+	makemainWindow()
 }
+
+func OnFinishEvent() {}
 
 func conws() {
 	url = regurl + geturl
 	ws.Dial(url, nil)
 	err := ws.GetDialError()
 	if err != nil {
-		zylo.Notify(err.Error())
+		DisplayToast(err.Error())
 	} else {
-		zylo.Notify("successfully connected to %s", url)
+		DisplayToast("successfully connected to %s", url)
 		stopCh = make(chan struct{})
 		go onmessage()
 		mainWindow.Show()
@@ -133,7 +141,7 @@ func makehttp() {
 	http.HandleFunc("/", checkserver)
 	err := http.ListenAndServe(":12345", nil)
 	if err != nil {
-		zylo.Notify(err.Error())
+		DisplayToast(err.Error())
 	}
 }
 
@@ -152,11 +160,7 @@ func opencfg(path string) {
 	}
 }
 
-func zlaunch() {
-	makemainWindow()
-}
-
-func zattach(name, path string) {
+func onAttachEvent(name, path string) {
 	first = true
 	check = false
 	select_section = ""
@@ -166,7 +170,7 @@ func zattach(name, path string) {
 	go makehttp()
 }
 
-func zverify(qso *zylo.QSO) {
+func onVerifyEvent(qso *QSO) {
 	rcvd := qso.GetRcvd()
 	qso.SetMul1(rcvd)
 	if qso.Dupe {
@@ -176,7 +180,7 @@ func zverify(qso *zylo.QSO) {
 	}
 }
 
-func zpoints(score, mults int) (total int) {
+func onPointsEvent(score, mults int) (total int) {
 	total = score * mults
 	return
 }
@@ -186,25 +190,17 @@ const (
 	DELETE = 1
 )
 
-func zinsert(qso *zylo.QSO) {
+func onInsertEvent(qso *QSO) {
 	sendQSO(INSERT, qso)
-	zylo.Notify("append QSO with %s", qso.GetCall())
+	DisplayToast("append QSO with %s", qso.GetCall())
 }
 
-func zdelete(qso *zylo.QSO) {
+func onDeleteEvent(qso *QSO) {
 	sendQSO(DELETE, qso)
-	zylo.Notify("delete QSO with %s", qso.GetCall())
+	DisplayToast("delete QSO with %s", qso.GetCall())
 }
 
-func zeditor(key int, source string) (block bool) {
-	return
-}
-
-func zbutton(btn int, source string) (block bool) {
-	return
-}
-
-func zdetach() {
+func onDetachEvent() {
 	if ws.IsConnected() {
 		close(stopCh)
 		ws.Close()
@@ -212,13 +208,11 @@ func zdetach() {
 	mainWindow.Close()
 }
 
-func zfinish() {}
-
-func sendQSO(request byte, qso *zylo.QSO) {
+func sendQSO(request byte, qso *QSO) {
 	msg := append([]byte{request}, qso.Dump(time.Local)...)
 	err := ws.WriteMessage(websocket.BinaryMessage, msg)
 	if err != nil {
-		zylo.Notify(err.Error())
+		DisplayToast(err.Error())
 	}
 }
 
@@ -226,7 +220,7 @@ func onmessage() {
 	for {
 		select {
 		case <-stopCh:
-			zylo.Notify("real.dll stop routine")
+			DisplayToast("real.dll stop routine")
 			return
 		default:
 			_, data, err := ws.ReadMessage()
@@ -266,7 +260,7 @@ func makemainWindow() {
 
 	btn.OnClick().Bind(func(e *winc.Event) {
 		if sections == nil {
-			zylo.Notify("none ranking data")
+			DisplayToast("none ranking data")
 		} else {
 			if check {
 				ls_rank.DeleteAllItems()
@@ -288,14 +282,20 @@ func makemainWindow() {
 						before_score = station.TOTAL
 					}
 					if strings.Index(station.CALL, callsign) >= 0 {
-						p := &Item{[]string{section_name, strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
+						p := &Item{[]string{
+							section_name,
+							strconv.Itoa(j),
+							station.CALL,
+							strconv.Itoa(station.SCORE),
+							strconv.Itoa(station.TOTAL),
+						}, false}
 						ls_rank.AddItem(p)
 						check = true
 					}
 				}
 			}
 			if !check {
-				zylo.Notify("your rival doesn't register this contest")
+				DisplayToast("your rival doesn't register this contest")
 			}
 		}
 	})
@@ -314,7 +314,7 @@ func makemainWindow() {
 	ls_section.OnClick().Bind(func(e *winc.Event) {
 		if ls_section.SelectedCount() == 1 {
 			if sections == nil {
-				zylo.Notify("none ranking data")
+				DisplayToast("none ranking data")
 			} else {
 				item_select := ls_section.SelectedItem()
 				item_select_string := item_select.Text()
@@ -375,7 +375,13 @@ func reload(sections map[string]([]Station)) {
 				before_score = station.TOTAL
 			}
 			if strings.Index(section_name, select_section) >= 0 {
-				p := &Item{[]string{section_name, strconv.Itoa(j), station.CALL, strconv.Itoa(station.SCORE), strconv.Itoa(station.TOTAL)}, false}
+				p := &Item{[]string{
+					section_name,
+					strconv.Itoa(j),
+					station.CALL,
+					strconv.Itoa(station.SCORE),
+					strconv.Itoa(station.TOTAL),
+				}, false}
 				ls.AddItem(p)
 			}
 		}
@@ -384,5 +390,3 @@ func reload(sections map[string]([]Station)) {
 		first = false
 	}
 }
-
-func main() {}
