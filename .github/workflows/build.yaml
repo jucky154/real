@@ -2,7 +2,7 @@ name: 'BuildDLL'
 on:
   push:
     branches:
-      - 'master'
+      - 'main'
 jobs:
   BuildDLL:
     runs-on: ubuntu-latest
@@ -15,11 +15,11 @@ jobs:
       - uses: dsaltares/fetch-gh-release-asset@master
         with:
           repo: "nextzlog/zylo"
-          version: "tags/nightly"
-          file: "zbuild-ubuntu"
+          version: "tags/zbuild"
+          file: "zbuild-linux"
           token: ${{secrets.GITHUB_TOKEN}}
-      - run: sudo chmod a+x zbuild-ubuntu
-      - run: ./zbuild-ubuntu
+      - run: sudo chmod a+x zbuild-linux
+      - run: ./zbuild-linux compile
       - uses: crazy-max/ghaction-upx@v1
         with:
           files: real.dll
